@@ -2,13 +2,13 @@ require("dotenv").config();
 const { connectToDb } = require("./config/connection");
 const cookieParser = require("cookie-parser");
 const express = require("express");
+const app = express();
 const cors = require("cors");
 const session = require("express-session");
 const parser = require("body-parser");
 const authRouter = require("./router/Auth.router");
-const messageRouter=require("./router/Message.router");
-const userRouter= require("./router/Users.router")
-const { app, server } = require("./socket/socket");
+const businessRegisterRouter=require("./router/Business.route")
+const userRouter = require("./router/Users.router");
 connectToDb();
 app.use(
   cors({
@@ -22,9 +22,9 @@ app.use(parser.urlencoded({ extended: true }));
 app.use(cookieParser());
 //
 app.use("/api/", authRouter.router);
-app.use("/api",messageRouter.router);
-app.use("/api",userRouter.router);
+app.use("/api", userRouter.router);
+app.use("/api",businessRegisterRouter.router)
 const PORT = process.env.PORT || 8080;
-server.listen(PORT, () => {
+app.listen(PORT, () => {
   console.log(`App is Running ${PORT}`);
 });
