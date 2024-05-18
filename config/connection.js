@@ -1,5 +1,4 @@
-const { default: mongoose } = require('mongoose');
-const moongose=require('mongoose');
+const mongoose=require('mongoose');
 exports.connectToDb=async()=>{
 try {
  await mongoose.connect(process.env.MongooseURI);

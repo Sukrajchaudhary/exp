@@ -1,4 +1,5 @@
 const { Business } = require("../models/Business.model");
+// TOD0: send OTP for veryfying phone number
 const generateOTP = () => {
   return Math.floor(100000 + Math.random() * 900000).toString();
 };
