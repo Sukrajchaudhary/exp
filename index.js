@@ -22,8 +22,8 @@ app.use(parser.urlencoded({ extended: true }));
 app.use(cookieParser());
 //
 app.use("/api/", authRouter.router);
-app.use("/api", userRouter.router);
-app.use("/api",businessRegisterRouter.router)
+app.use("/api/", userRouter.router);
+app.use("/api/",businessRegisterRouter.router)
 const PORT = process.env.PORT || 8080;
 app.listen(PORT, () => {
   console.log(`App is Running ${PORT}`);
