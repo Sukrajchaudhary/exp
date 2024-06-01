@@ -6,9 +6,8 @@ const { Service } = require("../models/Services.model");
 const { State } = require("../models/State.models");
 
 
-const accountSid = process.env.Account_SID;
-const authToken = process.env.TWILO_Auth_Token;
-
+const accountSid = process.env.TWILIO_ACCOUNT_SID;
+const authToken = process.env.TWILIO_AUTH_TOKEN;
 
 const client = new twilio(accountSid, authToken);
 
