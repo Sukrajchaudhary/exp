@@ -9,7 +9,8 @@ const { State } = require("../models/State.models");
 const accountSid = process.env.Account_SID;
 const authToken = process.env.TWILO_Auth_Token;
 
-const twiloClient = new twilio(accountSid, authToken);
+
+const client = new twilio(accountSid, authToken);
 
 //Regestring Business.
 exports.RegisterBusiness = async (req, res) => {
@@ -105,7 +106,7 @@ exports.sendOTP = async (req, res) => {
     }
 
     // Send OTP via Twilio
-    await twiloClient.messages.create({
+    await client.messages.create({
       body: `Your verification code is: ${OTP}`,
       to: phone,
       from: process.env.Twillo_Phone, 
