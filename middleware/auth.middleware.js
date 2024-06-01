@@ -1,4 +1,4 @@
-const { Users } = require("../models/Users.model");
+const {Business}=require("../models/Business.model")
 const jwt = require("jsonwebtoken");
 exports.verifyJWT = async (req, res, next) => {
   try {
@@ -9,13 +9,13 @@ exports.verifyJWT = async (req, res, next) => {
       throw new Error("Token Not Found");
     }
     const decodedToken = jwt.verify(token, process.env.RefreshTokenSecret);
-    const user = await Users.findById(decodedToken?.id).select('-password -accessToken');
-    if (!user) {
+    const business = await Business.findById(decodedToken?.id).select('-OTP -OTPExp');
+    if (!business) {
       return res.status(401).json({
         message: "Invalid Access Token",
       });
     }
-    req.user = user;
+    req.business = business;
     next();
   } catch (error) {
     return res.status(401).json(error.message);

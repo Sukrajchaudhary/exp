@@ -1,10 +1,12 @@
 const mongoose = require("mongoose");
 const { Schema } = mongoose;
+const bcrypt = require("bcryptjs");
+const jwt = require("jsonwebtoken");
 const businessSchema = new Schema(
   {
     email: {
       type: String,
-      required: true,
+      // required: true,
       unique: true,
       trim: true,
       lowercase: true,
@@ -15,33 +17,37 @@ const businessSchema = new Schema(
         message: (props) => `${props.value} is not a valid email address!`,
       },
     },
-    verifyNumber: {
-      type: String,
-      default: "123456",
-    },
-    phone: {
+    OTP: {
       type: String,
       require: true,
     },
+    OTPExp: {
+      type: Date,
+      default: Date.now,
+      get: (OTPExp) => OTPExp.getTime(),
+      set: (OTPExp) => new Date(OTPExp),
+    },
+    phone: {
+      type: String,
+      // require: true,
+    },
     businessName: {
       type: String,
-      required: true,
+      // required: true,
     },
-    serviceCategory: {
-      type: String,
-      required: true,
+    servicesInfo:{
+      type: mongoose.Schema.Types.ObjectId,
+      ref:"State"
     },
-    state: {
-      type: String,
-      required: true,
-      enum: ["Bagmati", "Gandaki", "Lumbini", "Karnali", "Sudurpashchim"],
-    },
-    city: {
-      type: String,
-      required: true,
-    },
+    serviceOfBusiness:{
+      type:String,
+    }
   },
   { timestamps: true }
 );
-
+businessSchema.methods.generatesAccessToken = async function () {
+  return jwt.sign({ id: this._id }, process.env.RefreshTokenSecret, {
+    expiresIn: "2h",
+  });
+};
 exports.Business = mongoose.model("Business", businessSchema);

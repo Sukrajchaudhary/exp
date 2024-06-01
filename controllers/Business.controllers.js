@@ -1,50 +1,176 @@
 const { Business } = require("../models/Business.model");
-// TOD0: send OTP for veryfying phone number
-const generateOTP = () => {
-  return Math.floor(100000 + Math.random() * 900000).toString();
-};
+const otpGenerator = require("otp-generator");
+const twilio = require("twilio");
+const { City } = require("../models/City.model");
+const { Service } = require("../models/Services.model");
+const { State } = require("../models/State.models");
+
+
+const accountSid = process.env.Account_SID;
+const authToken = process.env.TWILO_Auth_Token;
+
+const twiloClient = new twilio(accountSid, authToken);
+
 //Regestring Business.
 exports.RegisterBusiness = async (req, res) => {
   try {
-    const { email, phone, businessName, serviceCategory, state, city } =
-      req.body;
+    const {
+      phone,
+      email,
+      businessName,
+      serviceOfBusiness,
+      city,
+      state,
+      serviceCategory,
+    } = req.body;
 
-    if (
-      [email, phone, businessName, serviceCategory, state, city].some(
-        (fields) => !fields || fields.trim() === ""
-      )
-    ) {
-      return res.status(400).json({ message: "All fields are required!" });
-    }
-    const trimmedEmail = email.trim().toLowerCase();
-    const trimmedBusinessName = businessName.trim();
-    const existingBusiness = await Business.findOne({
-      $or: [{ businessName: trimmedBusinessName }, { email: trimmedEmail }],
+    // Create and save service
+    const service = new Service({
+      service: serviceCategory,
     });
-    if (existingBusiness) {
+    await service.save();
+
+    // Create and save city
+    const createCity = new City({
+      city: city,
+      services: service._id,
+    });
+    await createCity.save();
+
+    // Create and save state
+    const createState = new State({
+      state: state,
+      city: createCity._id,
+    });
+    await createState.save();
+
+    // Find and update existing business
+    const business = await Business.findOneAndUpdate(
+      { phone },
+      {
+        email,
+        businessName,
+        serviceOfBusiness,
+        servicesInfo: createState._id,
+      },
+      { new: true }
+    );
+
+    // If business not found, return an error
+    if (!business) {
       return res.status(400).json({
-        message: "Sorry, this business name or email is already registered.",
+        message: "Business not found!",
+        status: false,
       });
     }
-    const newBusiness = new Business({
-      email,
-      phone,
-      businessName,
-      serviceCategory,
-      state,
-      city,
+
+    const accessToken = await user.generatesAccessToken(business?._id);
+
+    return res.status(200).json({
+      message: "Business Registered Successfully!",
+      status: true,
+      business: business,
+      token: accessToken,
     });
-
-    await newBusiness.save();
-
-    return res
-      .status(201)
-      .json({ message: "Business registered successfully!", newBusiness });
   } catch (error) {
-    console.error("Error registering business:", error);
-    return res.status(500).json({ message: "Server error" });
+    return res.status(500).json({
+      message: error.message,
+    });
   }
 };
+// Otp sends
+exports.sendOTP = async (req, res) => {
+  try {
+    const { phone } = req.body;
+    if (!phone) {
+      return res.status(400).json({ message: "Phone number is required!" });
+    }
+
+    // Generate OTP
+    const OTP = otpGenerator.generate(6, {
+      upperCaseAlphabets: false,
+      lowerCaseAlphabets: false,
+      specialChars: false,
+    });
+    const OTPExp = new Date(Date.now() + 10 * 60000);
+
+    let business = await Business.findOne({ phone });
+    if (business) {
+      business.OTP = OTP;
+      business.OTPExp = OTPExp;
+      await business.save();
+    } else {
+      const newBusiness = new Business({ phone, OTP, OTPExp });
+      await newBusiness.save();
+    }
+
+    // Send OTP via Twilio
+    await twiloClient.messages.create({
+      body: `Your verification code is: ${OTP}`,
+      to: phone,
+      from: process.env.Twillo_Phone, 
+    });
+
+    return res.status(200).json({
+      OTP: OTP,
+      message: "Code sent successfully!",
+    });
+  } catch (error) {
+    return res.status(500).json({
+      message: error.message,
+    });
+  }
+};
+
+// verifyotp
+exports.verifyOTP = async (req, res) => {
+  try {
+    const { otp } = req.body;
+    console.log("otp", otp);
+    if (!otp) {
+      return res.status(400).json({ message: "Please Enter OTP" });
+    }
+    const business = await Business.findOne({ OTP: otp });
+    if (!business) {
+      return res.status(400).json({ message: "Please Enter correct OTP" });
+    }
+    return res
+      .status(200)
+      .json({ message: "Verification Successful", status: true });
+  } catch (error) {
+    return res.status(500).json({ message: error.message });
+  }
+};
+// getBusinessInfo
+exports.ownBusinessInfo = async (req, res) => {
+  try {
+    const { _id } = req.business;
+    const business = await Business.findById(_id).populate('servicesInfo').exec();
+    if (!business) {
+      return res.status(404).json({ message: 'Business not found' });
+    }
+
+    console.log(business.servicesInfo);
+
+    // Find city by city ID from servicesInfo
+    const cityId = business.servicesInfo?.city;
+    const city = cityId ? await City.findById(cityId).exec() : null;
+
+    // Find services by service ID from servicesInfo
+    const servicesId = business.servicesInfo?._id;
+    const services = servicesId ? await State.findById(servicesId).populate('city').exec() : null;
+
+    return res.status(200).json({
+      business,
+      city,
+      services,
+    });
+
+  } catch (error) {
+    return res.status(500).json({ message: error.message });
+  }
+};
+
 // Get all Registered Business.
 exports.GetsAllRegisteredBusiness = async (req, res) => {
   try {
