@@ -149,9 +149,6 @@ exports.ownBusinessInfo = async (req, res) => {
     if (!business) {
       return res.status(404).json({ message: 'Business not found' });
     }
-
-    console.log(business.servicesInfo);
-
     // Find city by city ID from servicesInfo
     const cityId = business.servicesInfo?.city;
     const city = cityId ? await City.findById(cityId).exec() : null;
