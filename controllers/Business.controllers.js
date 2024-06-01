@@ -1,15 +1,8 @@
 const { Business } = require("../models/Business.model");
-const otpGenerator = require("otp-generator");
-const twilio = require("twilio");
+
 const { City } = require("../models/City.model");
 const { Service } = require("../models/Services.model");
 const { State } = require("../models/State.models");
-
-
-const accountSid = process.env.TWILIO_ACCOUNT_SID;
-const authToken = process.env.TWILIO_AUTH_TOKEN;
-
-const client = new twilio(accountSid, authToken);
 
 //Regestring Business.
 exports.RegisterBusiness = async (req, res) => {
@@ -45,17 +38,14 @@ exports.RegisterBusiness = async (req, res) => {
     await createState.save();
 
     // Find and update existing business
-    const business = await Business.findOneAndUpdate(
-      { phone },
-      {
-        email,
-        businessName,
-        serviceOfBusiness,
-        servicesInfo: createState._id,
-      },
-      { new: true }
-    );
-
+    const business = new Business({
+      phone,
+      email,
+      businessName,
+      serviceOfBusiness,
+      servicesInfo: createState._id,
+    });
+  await business.save();
     // If business not found, return an error
     if (!business) {
       return res.status(400).json({
@@ -64,7 +54,7 @@ exports.RegisterBusiness = async (req, res) => {
       });
     }
 
-    const accessToken = await user.generatesAccessToken(business?._id);
+    const accessToken = await business.generatesAccessToken(business?._id);
 
     return res.status(200).json({
       message: "Business Registered Successfully!",
@@ -78,76 +68,16 @@ exports.RegisterBusiness = async (req, res) => {
     });
   }
 };
-// Otp sends
-exports.sendOTP = async (req, res) => {
-  try {
-    const { phone } = req.body;
-    if (!phone) {
-      return res.status(400).json({ message: "Phone number is required!" });
-    }
 
-    // Generate OTP
-    const OTP = otpGenerator.generate(6, {
-      upperCaseAlphabets: false,
-      lowerCaseAlphabets: false,
-      specialChars: false,
-    });
-    const OTPExp = new Date(Date.now() + 10 * 60000);
-
-    let business = await Business.findOne({ phone });
-    if (business) {
-      business.OTP = OTP;
-      business.OTPExp = OTPExp;
-      await business.save();
-    } else {
-      const newBusiness = new Business({ phone, OTP, OTPExp });
-      await newBusiness.save();
-    }
-
-    // Send OTP via Twilio
-    await client.messages.create({
-      body: `Your verification code is: ${OTP}`,
-      to: phone,
-      from: process.env.Twillo_Phone, 
-    });
-
-    return res.status(200).json({
-      OTP: OTP,
-      message: "Code sent successfully!",
-    });
-  } catch (error) {
-    return res.status(500).json({
-      message: error.message,
-    });
-  }
-};
-
-// verifyotp
-exports.verifyOTP = async (req, res) => {
-  try {
-    const { otp } = req.body;
-    console.log("otp", otp);
-    if (!otp) {
-      return res.status(400).json({ message: "Please Enter OTP" });
-    }
-    const business = await Business.findOne({ OTP: otp });
-    if (!business) {
-      return res.status(400).json({ message: "Please Enter correct OTP" });
-    }
-    return res
-      .status(200)
-      .json({ message: "Verification Successful", status: true });
-  } catch (error) {
-    return res.status(500).json({ message: error.message });
-  }
-};
 // getBusinessInfo
 exports.ownBusinessInfo = async (req, res) => {
   try {
     const { _id } = req.business;
-    const business = await Business.findById(_id).populate('servicesInfo').exec();
+    const business = await Business.findById(_id)
+      .populate("servicesInfo")
+      .exec();
     if (!business) {
-      return res.status(404).json({ message: 'Business not found' });
+      return res.status(404).json({ message: "Business not found" });
     }
     // Find city by city ID from servicesInfo
     const cityId = business.servicesInfo?.city;
@@ -155,14 +85,15 @@ exports.ownBusinessInfo = async (req, res) => {
 
     // Find services by service ID from servicesInfo
     const servicesId = business.servicesInfo?._id;
-    const services = servicesId ? await State.findById(servicesId).populate('city').exec() : null;
+    const services = servicesId
+      ? await State.findById(servicesId).populate("city").exec()
+      : null;
 
     return res.status(200).json({
       business,
       city,
       services,
     });
-
   } catch (error) {
     return res.status(500).json({ message: error.message });
   }

@@ -9,6 +9,7 @@ const parser = require("body-parser");
 const authRouter = require("./router/Auth.router");
 const businessRegisterRouter=require("./router/Business.route")
 const userRouter = require("./router/Users.router");
+const otpRouter=require("./router/Otp.router");
 connectToDb();
 app.use(
   cors({
@@ -23,7 +24,8 @@ app.use(cookieParser());
 //
 app.use("/api/", authRouter.router);
 app.use("/api/", userRouter.router);
-app.use("/api/",businessRegisterRouter.router)
+app.use("/api/",businessRegisterRouter.router);
+app.use("/api/",otpRouter.router);
 const PORT = process.env.PORT || 8080;
 app.listen(PORT, () => {
   console.log(`App is Running ${PORT}`);
